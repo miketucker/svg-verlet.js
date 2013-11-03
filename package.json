@@ -1,0 +1,18 @@
+{
+        "name"    : "SvgVerlet",
+
+        "version" : "0.1.0",
+
+        "description" : "SVG-based Verlet physics library. Written in Coffeescript.",
+
+        "author"  : {
+                "name"  : "Mike Tucker",
+                "email" : "mail@mike-tucker.com",
+                "url"   : "http://mike-tucker.com"
+        },
+
+        "dependencies" : {
+                "coffee-script" : ">=1.6.x",
+                "coffee-toaster" : ">=0.6.x"
+        }
+}

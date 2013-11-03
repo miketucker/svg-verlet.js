@@ -1,0 +1,3 @@
+
+RewriteEngine On
+RewriteRule ^/([^/]*)$ /index.php?id=$1 [L]

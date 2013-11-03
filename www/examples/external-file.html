@@ -1,0 +1,42 @@
+<!DOCTYPE html>  
+<html lang="en">
+	<head>
+		<title>SvgVerlet.js - External File</title>
+		<meta charset="utf-8">
+		<link rel="stylesheet" href="../css/style.css"/>
+		<script src="../js/jquery-1.9.1.min.js"></script>
+		<script src="../js/stats.js"></script>
+		<script src="../js/main.js"></script>
+	</head>
+	<body>
+
+		<div id="container">
+		</div>
+
+		<script type="text/javascript">
+			$(function(){
+
+				// Note: This will not work locally unless you are running a webserver.
+				// I recommend MAMP or WAMP
+
+				main = new examples.ColorSvgScene({file: "../svg/grass.svg"});
+				
+				$("#container").css("position","fixed");
+				$("#container").css("left","50%");
+				$("#container").css("top","50%");
+
+				main.addPlugin(new plugins.MousePull());
+
+				gravity = new plugins.Gravity();
+				gravity.y = - 0.1;
+				main.addPlugin(gravity);
+				
+				wind = new plugins.Wind(true);
+				wind.strength = 0.05;
+				main.addPlugin(wind);
+			});
+		</script>
+
+		
+	</body>
+</html>			

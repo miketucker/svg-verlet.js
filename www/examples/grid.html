@@ -1,0 +1,49 @@
+<!DOCTYPE html> 
+<html lang="en">
+	<head>
+		<title>SvgVerlet.js - Grid</title>
+		<meta charset="utf-8">
+		<link rel="stylesheet" href="../css/style.css"/>
+		<script src="../js/jquery-1.9.1.min.js"></script>
+		<script src="../js/stats.js"></script>
+		<script src="../js/main.js"></script>
+	</head>
+	<body>
+
+		<div id="container">
+
+			<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+				 width="700px" height="700px" viewBox="0 0 700 700" enable-background="new 0 0 700 700" xml:space="preserve">
+				<g id="Verlets">
+					<line fill="none" stroke="#666666" stroke-width="10" stroke-linecap="round" stroke-miterlimit="10" x1="125" y1="90.5" x2="133.333" y2="98.833"/>
+					
+						<line fill="none" stroke="#666666" stroke-width="5" stroke-linecap="round" stroke-miterlimit="10" x1="133.333" y1="98.833" x2="141.667" y2="107.167"/>
+					
+						<line fill="none" stroke="#666666" stroke-width="3" stroke-linecap="round" stroke-miterlimit="10" x1="141.667" y1="107.167" x2="150" y2="115.5"/>
+				</g>
+				<g id="Locks">
+					<circle opacity="0.5" fill="#FF0000" cx="125" cy="90.5" r="2.5"/>
+				</g>
+				<g id="Wind">
+					<circle opacity="0.5" fill="#00FF00" cx="150" cy="115.5" r="2.5"/>
+				</g>
+			</svg>
+		</div>
+
+		<script type="text/javascript">
+			$(function(){
+				$("#container").css("position","fixed");
+				$("#container").css("left","50%");
+				$("#container").css("top","50%");
+
+				main = new examples.GenerativeSvgScene();
+
+				main.addPlugin(new plugins.MousePull(0.04));
+				wind = new plugins.Wind(true);
+				main.addPlugin(wind);
+			});
+		</script>
+
+		
+	</body>
+</html>
