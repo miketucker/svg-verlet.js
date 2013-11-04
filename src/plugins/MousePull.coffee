@@ -44,7 +44,7 @@ class plugins.MousePull extends plugins.BasePlugin
 		@onResize()
 
 	unload: =>
-		console.log("unload")
+		# console.log("unload")
 		$(window).unbind( "resize", @onResize )
 		@scene.dom.removeEventListener "onSceneLoaded", @onResize
 

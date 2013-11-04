@@ -369,7 +369,6 @@ svg.Scene = (function(_super) {
     this.parseByGroups();
     this.verticalAlign(this.options.verticalAlign);
     this.horizontalAlign(this.options.horizontalAlign);
-    console.log("align", this.offsetY, this.offsetX, this.options.verticalAlign);
     this.dom.dispatchEvent(new Event("onSceneLoaded", {
       bubbles: true,
       cancelable: true
@@ -702,7 +701,6 @@ paperjs.Scene = (function(_super) {
     if (options.height != null) {
       this.settings.height = options.height;
     }
-    console.log(this.settings.width, this.settings.height);
     if (this.settings.width == null) {
       this.settings.width = $(window).width();
       this.settings.fullscreen = true;
@@ -713,7 +711,6 @@ paperjs.Scene = (function(_super) {
     $canvas = $("<canvas width='" + this.settings.width + "' height ='" + this.settings.height + "'/>");
     $(this.settings.container).append($canvas);
     this.dom = this.canvas = $canvas[0];
-    console.log(paper);
     paper.setup(this.canvas);
     this.project = paper.project;
     this.view = paper.view;
@@ -752,13 +749,10 @@ paperjs.Scene = (function(_super) {
     ret = this.quadTree.retrieve(search);
     p = new paper.Path.Rectangle(new paper.Point(search.x, search.y), new paper.Size(search.width, search.height));
     p.strokeColor = "red";
-    console.log(ret);
     for (_i = 0, _len = ret.length; _i < _len; _i++) {
       n = ret[_i];
-      console.log(n);
       if (n.x >= search.x && n.y >= search.y && n.x < (search.width + search.x) && n.y < (search.height + search.y)) {
         n.obj.fillColor = 'green';
-        console.log('found ', n);
       } else {
         n.obj.fillColor = 'blue';
       }
@@ -770,7 +764,6 @@ paperjs.Scene = (function(_super) {
     var svg;
     this.onLoaded();
     svg = this.project.importSVG($(e).find("svg")[0]);
-    console.log("boo", svg);
     if (svg.children.Statics != null) {
       this.elements.statics = svg.children.Statics;
     }
@@ -929,7 +922,6 @@ examples.ColorPaperScene = (function(_super) {
 
   ColorPaperScene.prototype.onLoadedSVG = function(e) {
     this.assignPalette($(e).find("svg")[0]);
-    console.log("loaded palette!", e);
     return ColorPaperScene.__super__.onLoadedSVG.call(this, e);
   };
 
@@ -939,7 +931,6 @@ examples.ColorPaperScene = (function(_super) {
     isLight = Math.random() > 0.5;
     if (isLight) {
       util.General.randomSeed = new Date().getTime() * 0.5;
-      console.log("rnd", util.General.randomFromSeed(), util.General.randomSeed);
       fgHue = Math.random();
       bgHue = fgHue + (Math.random() * 0.5 + 0.25);
       if (bgHue >= 1.0) {
@@ -1127,7 +1118,6 @@ examples.GenerativeSvgScene = (function(_super) {
     this.setSize(radius * 2, radius * 2);
     sx = radius;
     sy = radius;
-    console.log("sx,sy", sx, sy);
     windOffsetX = parseFloat($dupeWind.attr("cx")) - parseFloat($dupeLock.attr("cx"));
     windOffsetY = parseFloat($dupeWind.attr("cy")) - parseFloat($dupeLock.attr("cy"));
     for (i = _i = 0; 0 <= ringCount ? _i <= ringCount : _i >= ringCount; i = 0 <= ringCount ? ++_i : --_i) {
@@ -1301,7 +1291,6 @@ plugins.Gravity = (function(_super) {
     if (x != null) {
       this.x = x;
     }
-    console.log(this.x, this.y);
   }
 
   Gravity.prototype.init = function(scene) {
@@ -1418,7 +1407,6 @@ plugins.MousePull = (function(_super) {
 
   MousePull.prototype.unload = function() {
     var _this = this;
-    console.log("unload");
     $(window).unbind("resize", this.onResize);
     this.scene.dom.removeEventListener("onSceneLoaded", this.onResize);
     if (this.scene.isMobile()) {

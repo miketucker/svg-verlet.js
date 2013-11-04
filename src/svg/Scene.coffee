@@ -55,8 +55,6 @@ class svg.Scene extends BaseScene
 		@verticalAlign(@options.verticalAlign)
 		@horizontalAlign(@options.horizontalAlign)
 
-		console.log("align",@offsetY,@offsetX,@options.verticalAlign)
-
 		@dom.dispatchEvent(new Event("onSceneLoaded",{bubbles:true,cancelable:true}))
 		@onLoadCallback?()
 		@onInit()
@@ -131,7 +129,6 @@ class svg.Scene extends BaseScene
 	parseGroup: (c) =>
 		_ = @
 		$(c).children().each ->
-			# console.log(@nodeName)
 			switch @nodeName
 				when "g" 
 					if @id.length > 0 then _.addStatic(@)
@@ -148,7 +145,6 @@ class svg.Scene extends BaseScene
 
 	addLink: (c) =>
 		p = $(c)
-		# console.log("add link", c)
 		pa = @addPoint(p.attr('x1'),p.attr('y1'))
 		pb = @addPoint(p.attr('x2'),p.attr('y2'))
 		if pb.x < pa.x
@@ -163,7 +159,6 @@ class svg.Scene extends BaseScene
 		linkName = p[0].id.split("Link")[1]
 		for s in @statics
 			if s.id == linkName
-				# console.log("found",s)
 				sl.setLink(s) 
 				break
 		p.remove()
@@ -224,7 +219,6 @@ class svg.Scene extends BaseScene
 		i = 0
 		for p in pointStrAr
 			sp = p.split(",")
-			# console.log sp
 			unless isNaN(sp[0]) || isNaN(sp[1])
 				verletPoint = @addPoint(sp[0], sp[1] , kind )
 				pAr.push verletPoint
@@ -253,7 +247,6 @@ class svg.Scene extends BaseScene
 		return !dupe
 	
 	addSvgStick: (segment, remove = false , skipStick = false , kind = null ) =>
-		# console.log "segment", segment
 		p1 = @addPoint(segment.getAttribute('x1'),segment.getAttribute('y1'), kind)
 		p2 = @addPoint(segment.getAttribute('x2'),segment.getAttribute('y2'), kind)
 

@@ -14,7 +14,7 @@ class examples.ColorPaperScene extends paperjs.Scene
 
 	onLoadedSVG: (e) =>
 		@assignPalette($(e).find("svg")[0])
-		console.log "loaded palette!", e
+		# console.log "loaded palette!", e
 		super(e)
 
 	assignPalette: (svg) =>
@@ -26,7 +26,7 @@ class examples.ColorPaperScene extends paperjs.Scene
 		if isLight
 			util.General.randomSeed = (new Date().getTime() * 0.5)
 
-			console.log "rnd", util.General.randomFromSeed(), util.General.randomSeed
+			# console.log "rnd", util.General.randomFromSeed(), util.General.randomSeed
 			fgHue = Math.random()
 			bgHue = fgHue + (Math.random() * 0.5 + 0.25)
 			bgHue -= 1.0 if(bgHue >= 1.0) 

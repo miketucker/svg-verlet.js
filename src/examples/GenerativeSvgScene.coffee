@@ -34,7 +34,7 @@ class examples.GenerativeSvgScene extends examples.ColorSvgScene
 		sx = radius
 		sy = radius
 
-		console.log "sx,sy", sx, sy
+		# console.log "sx,sy", sx, sy
 
 
 		windOffsetX = parseFloat($dupeWind.attr("cx")) - parseFloat($dupeLock.attr("cx"))

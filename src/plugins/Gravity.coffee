@@ -19,7 +19,7 @@ class plugins.Gravity extends plugins.BasePlugin
 		@y = y if y?
 		@x = x if x?
 
-		console.log @x, @y
+		# console.log @x, @y
 
 	init: (@scene) =>
 		@points = []

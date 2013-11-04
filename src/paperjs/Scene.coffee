@@ -25,7 +25,7 @@ class paperjs.Scene extends BaseScene
 
 		@settings.width = options.width if options.width?
 		@settings.height = options.height if options.height?
-		console.log @settings.width, @settings.height
+		# console.log @settings.width, @settings.height
 		unless @settings.width? 
 			@settings.width = $(window).width()
 			@settings.fullscreen = true
@@ -36,7 +36,7 @@ class paperjs.Scene extends BaseScene
 		$(@settings.container).append($canvas)
 		@dom = @canvas = $canvas[0]
 
-		console.log paper
+		# console.log paper
 		paper.setup(@canvas)
 		@project = paper.project
 		@view = paper.view
@@ -66,12 +66,12 @@ class paperjs.Scene extends BaseScene
 		p = new paper.Path.Rectangle(new paper.Point(search.x,search.y),new paper.Size(search.width,search.height))
 		p.strokeColor = "red"
 
-		console.log ret
+		# console.log ret
 		for n in ret
-			console.log n
+			# console.log n
 			if n.x >= search.x and n.y >= search.y and n.x < (search.width + search.x) and n.y < (search.height + search.y)
 				n.obj.fillColor = 'green'
-				console.log 'found ' , n
+				# console.log 'found ' , n
 			else
 				n.obj.fillColor = 'blue'
 
@@ -80,7 +80,7 @@ class paperjs.Scene extends BaseScene
 	onLoadedSVG: (e) =>
 		@onLoaded()
 		svg = @project.importSVG($(e).find("svg")[0])
-		console.log "boo", svg
+		# console.log "boo", svg
 
 		@elements.statics = 		svg.children.Statics 		if svg.children.Statics?
 		@elements.links = 			svg.children.Links 			if svg.children.Links?
