@@ -15,5 +15,5 @@ toast 'src'
 
   # => HTTPFOLDER (optional), RELEASE / DEBUG (required)
   httpfolder: 'www'
-  release: 'www/js/main.js'
-  debug: 'www/js/main-debug.js'
+  release: 'www/js/svgVerlet.js'
+  debug: 'www/js/svgVerlet-debug.js'

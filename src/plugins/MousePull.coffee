@@ -1,3 +1,5 @@
+#<< plugins/BasePlugin
+
 ###
 	
 	VerletMousePull: Applies a radial gravity towards the mouse (or touch input) to each point 
@@ -5,7 +7,7 @@
 ###
 
 
-class plugins.MousePull
+class plugins.MousePull extends plugins.BasePlugin
 	mouse:
 		x: -9999
 		y: -9999
@@ -41,6 +43,20 @@ class plugins.MousePull
 		@scene.dom.addEventListener "onSceneLoaded", @onResize, false
 		@onResize()
 
+	unload: =>
+		console.log("unload")
+		$(window).unbind( "resize", @onResize )
+		@scene.dom.removeEventListener "onSceneLoaded", @onResize
+
+		if @scene.isMobile()
+			document.removeEventListener "touchmove"
+			document.removeEventListener "touchend"
+			document.removeEventListener "touchstart"	
+		else
+			document.removeEventListener "mousemove", @onMouseMove
+			document.removeEventListener "mousedown", () => @mouse.down = 2
+			document.removeEventListener "mouseup", () => @mouse.down = 1
+
 
 	onResize: =>
 		ww = $(window).width()
@@ -71,6 +87,9 @@ class plugins.MousePull
 
 
 	onMouseMove: (e) =>
+		@offsetX = $(@dom).offset().left 
+		@offsetY = $(@dom).offset().top 
+		
 		@mouse.x = e.pageX - @offsetX
 		@mouse.y = e.pageY - @offsetY
 

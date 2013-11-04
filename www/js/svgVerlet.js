@@ -109,6 +109,18 @@ BaseScene = (function() {
 
   BaseScene.prototype.dom = null;
 
+  BaseScene.prototype.options = {
+    container: "#container",
+    verticalAlign: "center",
+    horizontalAlign: "center",
+    callback: null,
+    file: null,
+    parseColors: {
+      lock: "#FF0000",
+      link: "#FF0000"
+    }
+  };
+
   BaseScene.prototype.snapDist = 1.0;
 
   BaseScene.prototype.lastFrameTime = 0.0;
@@ -123,6 +135,12 @@ BaseScene = (function() {
     this.addLock = __bind(this.addLock, this);
 
     this.update = __bind(this.update, this);
+    this.options.container = "#container";
+    this.options.verticalAlign = "center";
+    this.options.horizontalAlign = "center";
+    this.offsetY = 0;
+    this.offsetX = 0;
+    this.currentTimeStep = 0;
     this.points = [];
     this.sticks = [];
     this.stickLinks = [];
@@ -137,6 +155,18 @@ BaseScene = (function() {
 
   BaseScene.prototype.pause = function() {
     return this.isPlaying = false;
+  };
+
+  BaseScene.prototype.unload = function() {
+    var p, _i, _len, _ref, _results;
+    this.isPlaying = false;
+    _ref = this.plugins;
+    _results = [];
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      p = _ref[_i];
+      _results.push(p.unload());
+    }
+    return _results;
   };
 
   BaseScene.prototype.play = function() {
@@ -291,18 +321,6 @@ svg.Scene = (function(_super) {
 
   Scene.prototype.offsetY = 0;
 
-  Scene.prototype.options = {
-    container: "#container",
-    verticalAlign: "center",
-    horizontalAlign: "center",
-    callback: null,
-    file: null,
-    parseColors: {
-      lock: "#FF0000",
-      link: "#FF0000"
-    }
-  };
-
   Scene.prototype.onLoadCallback = null;
 
   function Scene(options) {
@@ -325,8 +343,6 @@ svg.Scene = (function(_super) {
     this.parseByGroups = __bind(this.parseByGroups, this);
 
     this.onLoaded = __bind(this.onLoaded, this);
-
-    this.onEmbedLoad = __bind(this.onEmbedLoad, this);
     Scene.__super__.constructor.call(this, options);
     util.General.copyObject(options, this.options);
     if (this.options.callback != null) {
@@ -343,20 +359,17 @@ svg.Scene = (function(_super) {
     }, 0);
   }
 
-  Scene.prototype.onEmbedLoad = function(e) {
-    console.log("embed", e);
-    return this.dom = this.svg = $("embed").find("svg")[0];
-  };
-
   Scene.prototype.onLoaded = function() {
     var _;
     Scene.__super__.onLoaded.call(this);
     this.dom = this.svg = this.container.find("svg")[0];
+    $(this.dom).hide();
+    $(this.dom).fadeIn();
     _ = this;
-    console.log("loaded", this.svg, this.dom);
     this.parseByGroups();
     this.verticalAlign(this.options.verticalAlign);
     this.horizontalAlign(this.options.horizontalAlign);
+    console.log("align", this.offsetY, this.offsetX, this.options.verticalAlign);
     this.dom.dispatchEvent(new Event("onSceneLoaded", {
       bubbles: true,
       cancelable: true
@@ -421,7 +434,10 @@ svg.Scene = (function(_super) {
       return _.makeInvisible(this);
     });
     $svg.find('[id^="HiddenVerlets"]').find("line").each(function() {
-      return _.addHiddenStick(this);
+      return _.addSvgStick(this, true);
+    });
+    $svg.find('[id^="HiddenVerlets"]').find("polyline").each(function() {
+      return _.addPolyStick(this, false, null, true);
     });
     $svg.find('[id^="Verlets"]').find("polyline").each(function() {
       return _.addPolyStick(this);
@@ -447,7 +463,7 @@ svg.Scene = (function(_super) {
     $svg.find('[id^="RubberPoints"]').find("path").each(function() {
       return _.addPathStick(this, true, "rubber");
     });
-    return $svg.find("#Links").find("line").each(function() {
+    return $svg.find('[id^="Links"]').find("line").each(function() {
       return _.addLink(this);
     });
   };
@@ -552,9 +568,6 @@ svg.Scene = (function(_super) {
             this.addUniqueStick(lastPoint, nextPoint);
           }
           pAr.push(nextPoint);
-          break;
-        case SVGPathSeg.PATHSEG_CLOSEPATH:
-          console.log("close");
       }
       ++i;
     }
@@ -563,7 +576,7 @@ svg.Scene = (function(_super) {
     }
   };
 
-  Scene.prototype.addPolyStick = function(polyline, skipStick, kind) {
+  Scene.prototype.addPolyStick = function(polyline, skipStick, kind, remove) {
     var i, p, pAr, pointStr, pointStrAr, prevVerlet, sp, verletPoint, _i, _len;
     if (skipStick == null) {
       skipStick = false;
@@ -571,24 +584,32 @@ svg.Scene = (function(_super) {
     if (kind == null) {
       kind = null;
     }
+    if (remove == null) {
+      remove = false;
+    }
     pointStr = polyline.getAttribute("points");
+    pointStr = pointStr.replace(/(\r\n|\t|\n|\r)/gm, "");
     pointStrAr = pointStr.split(" ");
     pAr = [];
-    i = 1;
+    i = 0;
     for (_i = 0, _len = pointStrAr.length; _i < _len; _i++) {
       p = pointStrAr[_i];
       sp = p.split(",");
       if (!(isNaN(sp[0]) || isNaN(sp[1]))) {
         verletPoint = this.addPoint(sp[0], sp[1], kind);
         pAr.push(verletPoint);
-        if (i % 2 === 0 && !skipStick) {
+        if (i > 0 && !skipStick) {
           this.addUniqueStick(prevVerlet, verletPoint);
         }
         prevVerlet = verletPoint;
       }
       i++;
     }
-    return this.elementPoints.push(new svg.PolyLine(polyline, pAr));
+    if (remove) {
+      return $(polyline).remove();
+    } else {
+      return this.elementPoints.push(new svg.PolyLine(polyline, pAr));
+    }
   };
 
   Scene.prototype.addUniqueStick = function(p1, p2) {
@@ -989,7 +1010,7 @@ examples.ColorSvgScene = (function(_super) {
   };
 
   ColorSvgScene.prototype.generatePalette = function() {
-    var bgHue, fgHue, fgSat, fgVal, secHue, secVal;
+    var bgHue, fgHue, fgSat, fgVal, highlightVal, secHue, secSat;
     this.isLight = Math.random() > 0.5;
     if (this.isLight) {
       util.General.randomSeed = new Date().getTime() * 0.001;
@@ -1001,14 +1022,15 @@ examples.ColorSvgScene = (function(_super) {
       fgSat = Math.random() * 0.5 + 0.5;
       fgVal = 0.5 + Math.random() * 0.2;
       this.bgColor = util.Color.hsvToHex(bgHue, Math.random() * 0.1, 0.8);
+      this.fgColor = util.Color.hsvToHex(fgHue, fgSat, fgVal);
+      highlightVal = Math.min(fgVal + 0.5, 1.0);
+      this.highlightColor = util.Color.hsvToHex(fgHue, fgSat, highlightVal);
       secHue = fgHue + 0.1;
       if (secHue > 1.0) {
         secHue -= 1.0;
       }
-      secVal = Math.min(fgVal + Math.random() * 0.4, 1.0);
-      this.secondaryColor = util.Color.hsvToHex(secHue, fgSat, secVal);
-      this.fgColor = util.Color.hsvToHex(fgHue, fgSat, fgVal);
-      this.highlightColor = util.Color.hsvToHex(fgHue, fgSat, Math.min(fgVal + 0.5, 1.0));
+      secSat = Math.min(fgVal + Math.random() * 0.4, 1.0);
+      return this.secondaryColor = util.Color.hsvToHex(secHue, secSat, highlightVal);
     } else {
       util.General.randomSeed = new Date().getTime() * 0.5;
       fgHue = util.General.randomFromSeed();
@@ -1016,19 +1038,19 @@ examples.ColorSvgScene = (function(_super) {
       if (bgHue >= 1.0) {
         bgHue -= 1.0;
       }
-      this.bgColor = util.Color.hsvToHex(bgHue, 0.15 + Math.random() * 0.2, Math.random() * 0.1);
-      fgSat = Math.random() * 0.1 + 0.3;
-      fgVal = 0.2 + Math.random() * 0.2;
-      this.highlightColor = util.Color.hsvToHex(fgHue, fgSat, fgVal);
-      secHue = fgHue + 0.1;
+      this.bgColor = util.Color.hsvToHex(bgHue, 0.15 + Math.random() * 0.2, 0.1 + Math.random() * 0.1);
+      fgSat = Math.random() * 0.5 + 0.3;
+      fgVal = 0.7 + Math.random() * 0.3;
+      this.fgColor = util.Color.hsvToHex(fgHue, fgSat, fgVal);
+      highlightVal = Math.min(fgVal - 0.4, 1.0);
+      this.highlightColor = util.Color.hsvToHex(fgHue, fgSat, highlightVal);
+      secHue = fgHue + 0.2;
       if (secHue > 1.0) {
         secHue -= 1.0;
       }
-      secVal = Math.min(fgVal + Math.random() * 0.4, 1.0);
-      this.secondaryColor = util.Color.hsvToHex(secHue, fgSat, secVal);
-      this.fgColor = util.Color.hsvToHex(fgHue, fgSat + 0.5, Math.min(fgVal + 0.8, 1.0));
+      secSat = Math.min(fgSat + Math.random() * 0.4, 1.0);
+      return this.secondaryColor = util.Color.hsvToHex(secHue, secSat, fgVal);
     }
-    return $("html, body").css("background-color", this.bgColor);
   };
 
   ColorSvgScene.prototype.assignPalette = function() {
@@ -1220,13 +1242,44 @@ paperjs.StickLink = (function(_super) {
 
 /*
 	
+	BasePlugin: Basic interface of a plugin
+*/
+
+
+plugins.BasePlugin = (function() {
+
+  function BasePlugin() {
+    this.unload = __bind(this.unload, this);
+
+    this.update = __bind(this.update, this);
+
+    this.init = __bind(this.init, this);
+
+  }
+
+  BasePlugin.prototype.init = function(scene) {
+    this.scene = scene;
+  };
+
+  BasePlugin.prototype.update = function() {};
+
+  BasePlugin.prototype.unload = function() {};
+
+  return BasePlugin;
+
+})();
+
+/*
+	
 	VerletGravity: Applies a simple directional force to each point.
 
 	If @useMobileTilt is enabled, the gyroscope data from the device will be used to determine the "down" direction
 */
 
 
-plugins.Gravity = (function() {
+plugins.Gravity = (function(_super) {
+
+  __extends(Gravity, _super);
 
   Gravity.prototype.x = 0;
 
@@ -1287,7 +1340,7 @@ plugins.Gravity = (function() {
 
   return Gravity;
 
-})();
+})(plugins.BasePlugin);
 
 /*
 	
@@ -1295,7 +1348,9 @@ plugins.Gravity = (function() {
 */
 
 
-plugins.MousePull = (function() {
+plugins.MousePull = (function(_super) {
+
+  __extends(MousePull, _super);
 
   MousePull.prototype.mouse = {
     x: -9999,
@@ -1328,6 +1383,8 @@ plugins.MousePull = (function() {
 
     this.onResize = __bind(this.onResize, this);
 
+    this.unload = __bind(this.unload, this);
+
     this.init = __bind(this.init, this);
     if (strength != null) {
       this.strength = strength;
@@ -1357,6 +1414,26 @@ plugins.MousePull = (function() {
     $(window).resize(this.onResize);
     this.scene.dom.addEventListener("onSceneLoaded", this.onResize, false);
     return this.onResize();
+  };
+
+  MousePull.prototype.unload = function() {
+    var _this = this;
+    console.log("unload");
+    $(window).unbind("resize", this.onResize);
+    this.scene.dom.removeEventListener("onSceneLoaded", this.onResize);
+    if (this.scene.isMobile()) {
+      document.removeEventListener("touchmove");
+      document.removeEventListener("touchend");
+      return document.removeEventListener("touchstart");
+    } else {
+      document.removeEventListener("mousemove", this.onMouseMove);
+      document.removeEventListener("mousedown", function() {
+        return _this.mouse.down = 2;
+      });
+      return document.removeEventListener("mouseup", function() {
+        return _this.mouse.down = 1;
+      });
+    }
   };
 
   MousePull.prototype.onResize = function() {
@@ -1395,6 +1472,8 @@ plugins.MousePull = (function() {
   };
 
   MousePull.prototype.onMouseMove = function(e) {
+    this.offsetX = $(this.dom).offset().left;
+    this.offsetY = $(this.dom).offset().top;
     this.mouse.x = e.pageX - this.offsetX;
     return this.mouse.y = e.pageY - this.offsetY;
   };
@@ -1432,7 +1511,70 @@ plugins.MousePull = (function() {
 
   return MousePull;
 
-})();
+})(plugins.BasePlugin);
+
+/* 
+
+	NoiseWarp: Applies a turbulance force
+*/
+
+
+plugins.NoiseWarp = (function(_super) {
+
+  __extends(NoiseWarp, _super);
+
+  NoiseWarp.prototype.noise = null;
+
+  NoiseWarp.prototype.speed = 0.01;
+
+  NoiseWarp.prototype.zoom = 0.002;
+
+  NoiseWarp.prototype.strength = 0.1;
+
+  NoiseWarp.prototype.offsetX = 1.0;
+
+  NoiseWarp.prototype.offsetY = 1.0;
+
+  NoiseWarp.prototype.offsetZ = 2.0;
+
+  NoiseWarp.prototype.skip = 0;
+
+  function NoiseWarp() {
+    this.noise = new util.ImprovedNoise();
+  }
+
+  NoiseWarp.prototype.init = function(scene) {
+    var p, _, _i, _len, _ref;
+    this.scene = scene;
+    _ = this;
+    _ref = this.scene.points;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      p = _ref[_i];
+      p.warpDampen = Math.max(this.noise.noise(p.x * 0.1, p.y * 0.1, 1.0) * 0.2 + 0.1, 0.01);
+    }
+    return this.update = function() {
+      var currentStrength, _j, _k, _len1, _len2, _ref1, _ref2, _results;
+      currentStrength = BaseScene.currentTimeStep * this.strength;
+      _ref1 = this.scene.points;
+      for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+        p = _ref1[_j];
+        p.x += ((p.originalX + this.noise.noise(p.x * this.zoom + this.offsetX, p.y * this.zoom + this.offsetY, this.offsetZ) * currentStrength) - p.x) * p.warpDampen;
+        p.y += ((p.originalY + this.noise.noise(p.x * this.zoom + 1.0 + this.offsetX, p.y * this.zoom + this.offsetY, this.offsetZ) * currentStrength) - p.y) * p.warpDampen;
+      }
+      this.offsetZ += this.speed;
+      _ref2 = this.scene.elementPoints;
+      _results = [];
+      for (_k = 0, _len2 = _ref2.length; _k < _len2; _k++) {
+        p = _ref2[_k];
+        _results.push(p.update());
+      }
+      return _results;
+    };
+  };
+
+  return NoiseWarp;
+
+})(plugins.BasePlugin);
 
 /*
 
@@ -1440,11 +1582,13 @@ plugins.MousePull = (function() {
 */
 
 
-plugins.StatWrapper = (function() {
+plugins.StatWrapper = (function(_super) {
+
+  __extends(StatWrapper, _super);
 
   function StatWrapper() {
     this.update = __bind(this.update, this);
-
+    return StatWrapper.__super__.constructor.apply(this, arguments);
   }
 
   StatWrapper.prototype.init = function(scene) {
@@ -1461,7 +1605,7 @@ plugins.StatWrapper = (function() {
 
   return StatWrapper;
 
-})();
+})(plugins.BasePlugin);
 
 /* 
 
@@ -1469,7 +1613,9 @@ plugins.StatWrapper = (function() {
 */
 
 
-plugins.Wind = (function() {
+plugins.Wind = (function(_super) {
+
+  __extends(Wind, _super);
 
   Wind.prototype.noise = null;
 
@@ -1485,22 +1631,25 @@ plugins.Wind = (function() {
 
   Wind.prototype.offsetY = 1.0;
 
-  Wind.prototype.offsetZ = 2.0;
+  Wind.prototype.offsetZ = 1.0;
 
   Wind.prototype.skip = 0;
 
   function Wind(useSvgPoints) {
     this.useSvgPoints = useSvgPoints != null ? useSvgPoints : false;
+    this.update = __bind(this.update, this);
+
+    this.offsetZ = 1.0;
     this.noise = new util.ImprovedNoise();
   }
 
   Wind.prototype.init = function(scene) {
-    var p, _, _i, _len, _ref;
+    var p, _, _i, _len, _ref, _results;
     this.scene = scene;
     _ = this;
     this.windPoints = [];
     if (this.useSvgPoints) {
-      $(this.scene.dom).find('[id^="Wind"]').find("circle,ellipse").each(function() {
+      return $(this.scene.dom).find('[id^="Wind"]').find("circle,ellipse").each(function() {
         var c, p, x, y;
         c = $(this);
         x = c.attr('cx');
@@ -1511,28 +1660,33 @@ plugins.Wind = (function() {
       });
     } else {
       _ref = this.scene.points;
+      _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         p = _ref[_i];
         if (!p.locked) {
-          this.windPoints.push(p);
+          _results.push(this.windPoints.push(p));
+        } else {
+          _results.push(void 0);
         }
       }
+      return _results;
     }
-    return this.update = function() {
-      var currentStrength, _j, _len1, _ref1;
-      currentStrength = BaseScene.currentTimeStep * this.strength;
-      _ref1 = this.windPoints;
-      for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-        p = _ref1[_j];
-        p.force(this.noise.noise(p.x * this.zoom + this.offsetX, p.y * this.zoom + this.offsetY, this.offsetZ) * currentStrength, this.noise.noise(p.x * this.zoom + 1.0 + this.offsetX, p.y * this.zoom + this.offsetY, this.offsetZ) * currentStrength);
-      }
-      return this.offsetZ += this.speed;
-    };
+  };
+
+  Wind.prototype.update = function() {
+    var currentStrength, p, _i, _len, _ref;
+    currentStrength = BaseScene.currentTimeStep * this.strength;
+    _ref = this.windPoints;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      p = _ref[_i];
+      p.force(this.noise.noise(p.x * this.zoom + this.offsetX, p.y * this.zoom + this.offsetY, this.offsetZ) * currentStrength, this.noise.noise(p.x * this.zoom + 1.0 + this.offsetX, p.y * this.zoom + this.offsetY, this.offsetZ) * currentStrength);
+    }
+    return this.offsetZ += this.speed;
   };
 
   return Wind;
 
-})();
+})(plugins.BasePlugin);
 
 /*
 
@@ -1717,6 +1871,95 @@ svg.StickLink = (function(_super) {
   return StickLink;
 
 })(verlet.Stick);
+
+/*
+
+	util.Color: Basic color class for converting HSV, RGB, and HEX etc
+*/
+
+
+util.Color = (function() {
+
+  function Color() {}
+
+  Color.hexToRgb = function(a) {
+    if (typeof a === "string") {
+      a = a.match(/\w\w/g);
+    }
+    return ["0x" + a[0] - 0, "0x" + a[1] - 0, "0x" + a[2] - 0];
+  };
+
+  Color.componentToHex = function(c) {
+    var hex;
+    hex = c.toString(16);
+    if (hex.length === 1) {
+      return "0" + hex;
+    } else {
+      return hex;
+    }
+  };
+
+  Color.rgbToHex = function(r, g, b) {
+    return "#" + this.componentToHex(r) + this.componentToHex(g) + this.componentToHex(b);
+  };
+
+  Color.hsvToHex = function(h, s, v) {
+    var b, f, g, i, p, q, r, t;
+    r = void 0;
+    g = void 0;
+    b = void 0;
+    i = void 0;
+    f = void 0;
+    p = void 0;
+    q = void 0;
+    t = void 0;
+    if (h && s === undefined && v === undefined) {
+      s = h.s;
+      v = h.v;
+      h = h.h;
+    }
+    i = Math.floor(h * 6);
+    f = h * 6 - i;
+    p = v * (1 - s);
+    q = v * (1 - f * s);
+    t = v * (1 - (1 - f) * s);
+    switch (i % 6) {
+      case 0:
+        r = v;
+        g = t;
+        b = p;
+        break;
+      case 1:
+        r = q;
+        g = v;
+        b = p;
+        break;
+      case 2:
+        r = p;
+        g = v;
+        b = t;
+        break;
+      case 3:
+        r = p;
+        g = q;
+        b = v;
+        break;
+      case 4:
+        r = t;
+        g = p;
+        b = v;
+        break;
+      case 5:
+        r = v;
+        g = p;
+        b = q;
+    }
+    return this.rgbToHex(Math.floor(r * 255), Math.floor(g * 255), Math.floor(b * 255));
+  };
+
+  return Color;
+
+})();
 
 /*
 
@@ -2163,155 +2406,3 @@ verlet.RubberPoint = (function(_super) {
   return RubberPoint;
 
 })(verlet.Point);
-
-/* 
-
-	NoiseWarp: Applies a turbulance force
-*/
-
-
-plugins.NoiseWarp = (function() {
-
-  NoiseWarp.prototype.noise = null;
-
-  NoiseWarp.prototype.speed = 0.01;
-
-  NoiseWarp.prototype.zoom = 0.002;
-
-  NoiseWarp.prototype.strength = 0.1;
-
-  NoiseWarp.prototype.offsetX = 1.0;
-
-  NoiseWarp.prototype.offsetY = 1.0;
-
-  NoiseWarp.prototype.offsetZ = 2.0;
-
-  NoiseWarp.prototype.skip = 0;
-
-  function NoiseWarp() {
-    this.noise = new util.ImprovedNoise();
-  }
-
-  NoiseWarp.prototype.init = function(scene) {
-    var p, _, _i, _len, _ref;
-    this.scene = scene;
-    _ = this;
-    _ref = this.scene.points;
-    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      p = _ref[_i];
-      p.warpDampen = Math.max(this.noise.noise(p.x * 0.1, p.y * 0.1, 1.0) * 0.2 + 0.1, 0.01);
-    }
-    return this.update = function() {
-      var currentStrength, _j, _k, _len1, _len2, _ref1, _ref2, _results;
-      currentStrength = BaseScene.currentTimeStep * this.strength;
-      _ref1 = this.scene.points;
-      for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-        p = _ref1[_j];
-        p.x += ((p.originalX + this.noise.noise(p.x * this.zoom + this.offsetX, p.y * this.zoom + this.offsetY, this.offsetZ) * currentStrength) - p.x) * p.warpDampen;
-        p.y += ((p.originalY + this.noise.noise(p.x * this.zoom + 1.0 + this.offsetX, p.y * this.zoom + this.offsetY, this.offsetZ) * currentStrength) - p.y) * p.warpDampen;
-      }
-      this.offsetZ += this.speed;
-      _ref2 = this.scene.elementPoints;
-      _results = [];
-      for (_k = 0, _len2 = _ref2.length; _k < _len2; _k++) {
-        p = _ref2[_k];
-        _results.push(p.update());
-      }
-      return _results;
-    };
-  };
-
-  NoiseWarp.prototype.update = function() {};
-
-  return NoiseWarp;
-
-})();
-
-/*
-
-	util.Color: Basic color class for converting HSV, RGB, and HEX etc
-*/
-
-
-util.Color = (function() {
-
-  function Color() {}
-
-  Color.hexToRgb = function(a) {
-    if (typeof a === "string") {
-      a = a.match(/\w\w/g);
-    }
-    return ["0x" + a[0] - 0, "0x" + a[1] - 0, "0x" + a[2] - 0];
-  };
-
-  Color.componentToHex = function(c) {
-    var hex;
-    hex = c.toString(16);
-    if (hex.length === 1) {
-      return "0" + hex;
-    } else {
-      return hex;
-    }
-  };
-
-  Color.rgbToHex = function(r, g, b) {
-    return "#" + this.componentToHex(r) + this.componentToHex(g) + this.componentToHex(b);
-  };
-
-  Color.hsvToHex = function(h, s, v) {
-    var b, f, g, i, p, q, r, t;
-    r = void 0;
-    g = void 0;
-    b = void 0;
-    i = void 0;
-    f = void 0;
-    p = void 0;
-    q = void 0;
-    t = void 0;
-    if (h && s === undefined && v === undefined) {
-      s = h.s;
-      v = h.v;
-      h = h.h;
-    }
-    i = Math.floor(h * 6);
-    f = h * 6 - i;
-    p = v * (1 - s);
-    q = v * (1 - f * s);
-    t = v * (1 - (1 - f) * s);
-    switch (i % 6) {
-      case 0:
-        r = v;
-        g = t;
-        b = p;
-        break;
-      case 1:
-        r = q;
-        g = v;
-        b = p;
-        break;
-      case 2:
-        r = p;
-        g = v;
-        b = t;
-        break;
-      case 3:
-        r = p;
-        g = q;
-        b = v;
-        break;
-      case 4:
-        r = t;
-        g = p;
-        b = v;
-        break;
-      case 5:
-        r = v;
-        g = p;
-        b = q;
-    }
-    return this.rgbToHex(Math.floor(r * 255), Math.floor(g * 255), Math.floor(b * 255));
-  };
-
-  return Color;
-
-})();

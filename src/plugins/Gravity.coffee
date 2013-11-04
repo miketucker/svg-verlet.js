@@ -1,3 +1,5 @@
+#<< plugins/BasePlugin
+
 ###
 	
 	VerletGravity: Applies a simple directional force to each point.
@@ -7,7 +9,7 @@
 ###
 
 
-class plugins.Gravity
+class plugins.Gravity extends plugins.BasePlugin
 	x: 0
 	y: 0.02
 	points: null

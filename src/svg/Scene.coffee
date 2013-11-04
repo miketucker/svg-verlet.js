@@ -21,16 +21,7 @@ class svg.Scene extends BaseScene
 	offsetX: 0
 	offsetY: 0
 
-	options:
-		container: "#container"
-		verticalAlign: "center"
-		horizontalAlign: "center"
-		callback: null
-		file: null
-
-		parseColors:
-			lock: "#FF0000"
-			link: "#FF0000"		
+	
 
 	onLoadCallback: null
 
@@ -50,23 +41,21 @@ class svg.Scene extends BaseScene
 			window.scrollTo(0, 1)
 		, 0
 
-	onEmbedLoad: (e) =>
-		console.log("embed", e)
-		@dom = @svg = $("embed").find("svg")[0]
-
-
-
 	onLoaded: =>
 		super()
 		@dom = @svg = @container.find("svg")[0]
+		$(@dom).hide()
+		$(@dom).fadeIn()
 		_ = @
-
-		console.log("loaded",@svg,@dom,)
 
 		@parseByGroups()
 		
+
+
 		@verticalAlign(@options.verticalAlign)
 		@horizontalAlign(@options.horizontalAlign)
+
+		console.log("align",@offsetY,@offsetX,@options.verticalAlign)
 
 		@dom.dispatchEvent(new Event("onSceneLoaded",{bubbles:true,cancelable:true}))
 		@onLoadCallback?()
@@ -114,7 +103,12 @@ class svg.Scene extends BaseScene
 		# "Hit" prefix is reserved for href buttons, so we make them invisible here
 		$svg.find('[id^="Hit"]').each () -> _.makeInvisible(@)
 
-		$svg.find('[id^="HiddenVerlets"]').find("line").each () -> _.addHiddenStick(@)
+		$svg.find('[id^="HiddenVerlets"]').find("line").each () -> 
+			_.addSvgStick(@,true)
+
+		$svg.find('[id^="HiddenVerlets"]').find("polyline").each () -> 
+			_.addPolyStick(@, false, null, true)
+
 		$svg.find('[id^="Verlets"]').find("polyline").each () -> _.addPolyStick(@)
 		$svg.find('[id^="Verlets"]').find("line").each () -> _.addSvgStick(@)
 
@@ -126,7 +120,7 @@ class svg.Scene extends BaseScene
 		$svg.find('[id^="RubberPoints"]').find("line").each () -> 		_.addSvgStick( 		@, false, true, "rubber")
 		$svg.find('[id^="RubberPoints"]').find("path").each () -> 		_.addPathStick( 	@, true, "rubber")
 
-		$svg.find("#Links").find("line").each () ->  _.addLink(@)
+		$svg.find('[id^="Links"]').find("line").each () ->  _.addLink(@)
 
 	makeInvisible: (c) ->
 		c.setAttribute("fill","rgba(0,0,0,0)")
@@ -154,6 +148,7 @@ class svg.Scene extends BaseScene
 
 	addLink: (c) =>
 		p = $(c)
+		# console.log("add link", c)
 		pa = @addPoint(p.attr('x1'),p.attr('y1'))
 		pb = @addPoint(p.attr('x2'),p.attr('y2'))
 		if pb.x < pa.x
@@ -168,6 +163,7 @@ class svg.Scene extends BaseScene
 		linkName = p[0].id.split("Link")[1]
 		for s in @statics
 			if s.id == linkName
+				# console.log("found",s)
 				sl.setLink(s) 
 				break
 		p.remove()
@@ -212,31 +208,36 @@ class svg.Scene extends BaseScene
 					# @addUniqueStick(lastPoint,nextPoint) unless skipStick
 					# pAr.push nextPoint
 
-				when SVGPathSeg.PATHSEG_CLOSEPATH
-					console.log "close"
+				# when SVGPathSeg.PATHSEG_CLOSEPATH
+					# console.log "close"	
 					# http://www.w3.org/TR/SVG/paths.html#InterfaceSVGPathSegClosePath
 			++i
 		@elementPoints.push new svg.Path(path,pAr) if pAr.length > 1
 
 
 
-	addPolyStick: (polyline, skipStick = false, kind = null) =>
+	addPolyStick: (polyline, skipStick = false, kind = null, remove = false) =>
 		pointStr = polyline.getAttribute("points")
+		pointStr = pointStr.replace(/(\r\n|\t|\n|\r)/gm,"");
 		pointStrAr = pointStr.split(" ")
-
 		pAr = []
-		i = 1
+		i = 0
 		for p in pointStrAr
 			sp = p.split(",")
+			# console.log sp
 			unless isNaN(sp[0]) || isNaN(sp[1])
 				verletPoint = @addPoint(sp[0], sp[1] , kind )
 				pAr.push verletPoint
-				if i % 2 == 0 && !skipStick
+				if i > 0 && !skipStick
 					@addUniqueStick(prevVerlet,verletPoint)
 
 				prevVerlet = verletPoint
 			i++
-		@elementPoints.push new svg.PolyLine(polyline,pAr)
+		if remove
+			$(polyline).remove()
+		else
+			@elementPoints.push new svg.PolyLine(polyline,pAr) 
+		
 
 
 	addUniqueStick:(p1,p2) ->

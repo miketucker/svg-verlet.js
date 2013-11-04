@@ -1,3 +1,5 @@
+#<< plugins/BasePlugin
+
 ### 
 
 	VerletWind: Applies a turbulance force using noise to points based on their position
@@ -5,7 +7,7 @@
 ###
 
 
-class plugins.Wind
+class plugins.Wind extends plugins.BasePlugin
 	noise: null
 	speed: 0.01
 	zoom: 0.002
@@ -14,10 +16,11 @@ class plugins.Wind
 
 	offsetX: 1.0
 	offsetY: 1.0
-	offsetZ: 2.0
+	offsetZ: 1.0
 	skip: 0
 
 	constructor: ( @useSvgPoints = false ) ->
+		@offsetZ = 1.0
 		@noise = new util.ImprovedNoise()
 
 	init: (@scene) ->
@@ -38,12 +41,12 @@ class plugins.Wind
 			for p in @scene.points
 				@windPoints.push(p) unless p.locked
 
-		@update = ->
-			currentStrength = BaseScene.currentTimeStep * @strength
+	update: =>
+		currentStrength = BaseScene.currentTimeStep * @strength
 
-			for p in @windPoints
-				p.force(
-					@noise.noise(p.x * @zoom + @offsetX , p.y * @zoom + @offsetY , @offsetZ) * currentStrength, 
-					@noise.noise(p.x * @zoom + 1.0 + @offsetX , p.y * @zoom + @offsetY , @offsetZ) * currentStrength
-				)
-			@offsetZ += @speed
+		for p in @windPoints
+			p.force(
+				@noise.noise(p.x * @zoom + @offsetX , p.y * @zoom + @offsetY , @offsetZ) * currentStrength, 
+				@noise.noise(p.x * @zoom + 1.0 + @offsetX , p.y * @zoom + @offsetY , @offsetZ) * currentStrength
+			)
+		@offsetZ += @speed

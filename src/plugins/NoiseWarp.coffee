@@ -1,3 +1,5 @@
+#<< plugins/BasePlugin
+
 ### 
 
 	NoiseWarp: Applies a turbulance force 
@@ -5,7 +7,7 @@
 ###
 
 
-class plugins.NoiseWarp
+class plugins.NoiseWarp extends plugins.BasePlugin
 	noise: null
 	speed: 0.01
 	zoom: 0.002
@@ -36,6 +38,3 @@ class plugins.NoiseWarp
 
 			for p in @scene.elementPoints
 				p.update()
-
-	update: ->
-		return

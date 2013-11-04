@@ -11,6 +11,17 @@ class BaseScene
 
 	dom: null
 
+	options:
+		container: "#container"
+		verticalAlign: "center"
+		horizontalAlign: "center"
+		callback: null
+		file: null
+
+		parseColors:
+			lock: "#FF0000"
+			link: "#FF0000"		
+
 	# maximum distance to join verlet points
 	snapDist: 1.0
 
@@ -19,6 +30,13 @@ class BaseScene
 	@currentTimeStep: 0.0
 
 	constructor: (options) ->
+		@options.container = "#container"
+		@options.verticalAlign = "center"
+		@options.horizontalAlign = "center"
+		@offsetY = 0
+		@offsetX = 0
+		@currentTimeStep = 0
+
 		@points = []
 		@sticks = []
 		@stickLinks = []
@@ -26,12 +44,17 @@ class BaseScene
 		@statics = []
 		@updates = []
 		@plugins = []
+
 		@quadTree = new util.QuadTree()
 		@lastFrameTime = new Date().getTime()
 		@isPlaying = true
 
 	pause: ->
 		@isPlaying = false
+
+	unload: ->
+		@isPlaying = false
+		p.unload() for p in @plugins
 
 	play: ->
 		@isPlaying = true

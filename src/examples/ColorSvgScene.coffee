@@ -25,7 +25,8 @@ class examples.ColorSvgScene extends svg.Scene
 
 	generatePalette: ->
 		@isLight = Math.random() > 0.5
-		# isLight = true
+
+
 
 		if @isLight
 			util.General.randomSeed = (new Date().getTime() * 0.001)
@@ -39,14 +40,17 @@ class examples.ColorSvgScene extends svg.Scene
 
 			@bgColor =  util.Color.hsvToHex(bgHue,Math.random() * 0.1,0.8)
 
+
+			@fgColor = util.Color.hsvToHex(fgHue,fgSat,fgVal)
+			highlightVal =  Math.min(fgVal + 0.5,1.0)
+			@highlightColor =  util.Color.hsvToHex( fgHue, fgSat, highlightVal)
+
 			secHue = fgHue + 0.1
 			secHue -= 1.0 if secHue > 1.0
 
-			secVal = Math.min(fgVal + Math.random() * 0.4,1.0);
-			@secondaryColor = util.Color.hsvToHex(secHue,fgSat,secVal)
+			secSat = Math.min(fgVal + Math.random() * 0.4,1.0);
+			@secondaryColor = util.Color.hsvToHex(secHue,secSat,highlightVal)
 
-			@fgColor = util.Color.hsvToHex(fgHue,fgSat,fgVal)
-			@highlightColor =  util.Color.hsvToHex( fgHue, fgSat, Math.min(fgVal + 0.5,1.0))
 
 		else
 			util.General.randomSeed = (new Date().getTime() * 0.5)
@@ -54,22 +58,22 @@ class examples.ColorSvgScene extends svg.Scene
 			bgHue = fgHue + (Math.random() * 0.5 + 0.25)
 			bgHue -= 1.0 if(bgHue >= 1.0) 
 
-			@bgColor =  util.Color.hsvToHex(bgHue,0.15 + Math.random() * 0.2,Math.random() * 0.1)
+			@bgColor =  util.Color.hsvToHex(bgHue,0.15 + Math.random() * 0.2,0.1 + Math.random() * 0.1)
 			
-			fgSat = Math.random() * 0.1 + 0.3
-			fgVal = 0.2 + Math.random() * 0.2
+			fgSat = Math.random() * 0.5 + 0.3
+			fgVal = 0.7 + Math.random() * 0.3
 
-			@highlightColor = util.Color.hsvToHex(fgHue,fgSat,fgVal)
+			@fgColor = util.Color.hsvToHex(fgHue,fgSat,fgVal)
+			highlightVal =  Math.min(fgVal - 0.4,1.0)
+			@highlightColor =  util.Color.hsvToHex( fgHue, fgSat, highlightVal)
 
-			secHue = fgHue + 0.1
+			secHue = fgHue + 0.2
 			secHue -= 1.0 if secHue > 1.0
 
-			secVal = Math.min(fgVal + Math.random() * 0.4,1.0);
-			@secondaryColor = util.Color.hsvToHex(secHue,fgSat,secVal)
+			secSat = Math.min(fgSat + Math.random() * 0.4,1.0);
+			@secondaryColor = util.Color.hsvToHex(secHue,secSat,fgVal)
 
-			@fgColor =  util.Color.hsvToHex( fgHue, fgSat + 0.5, Math.min(fgVal + 0.8,1.0))
-
-		$("html, body").css("background-color",@bgColor)
+		# $("html, body").css("background-color",@bgColor)
 
 
 	assignPalette: ->
