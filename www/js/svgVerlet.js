@@ -17,7 +17,7 @@ var verlet = {};
 	TODO: Clean up the duplicate function for locked A vs B
 */
 
-var BaseScene, RAD_2_DEG,
+var BaseScene, RAD_2_DEG, improvedNoise, lastUpdate,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
   __hasProp = {}.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
@@ -97,6 +97,76 @@ verlet.Stick = (function() {
 
 /*
 
+	Improved Noise: fast noise filter
+
+	Source: http://mrl.nyu.edu/~perlin/noise/
+*/
+
+
+util.ImprovedNoise = (function() {
+  var fade, grad, i, lerp, p;
+
+  function ImprovedNoise() {}
+
+  fade = function(t) {
+    return t * t * t * (t * (t * 6 - 15) + 10);
+  };
+
+  lerp = function(t, a, b) {
+    return a + t * (b - a);
+  };
+
+  grad = function(hash, x, y, z) {
+    var h, u, v;
+    h = hash & 15;
+    u = (h < 8 ? x : y);
+    v = (h < 4 ? y : (h === 12 || h === 14 ? x : z));
+    return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+  };
+
+  p = [151, 160, 137, 91, 90, 15, 131, 13, 201, 95, 96, 53, 194, 233, 7, 225, 140, 36, 103, 30, 69, 142, 8, 99, 37, 240, 21, 10, 23, 190, 6, 148, 247, 120, 234, 75, 0, 26, 197, 62, 94, 252, 219, 203, 117, 35, 11, 32, 57, 177, 33, 88, 237, 149, 56, 87, 174, 20, 125, 136, 171, 168, 68, 175, 74, 165, 71, 134, 139, 48, 27, 166, 77, 146, 158, 231, 83, 111, 229, 122, 60, 211, 133, 230, 220, 105, 92, 41, 55, 46, 245, 40, 244, 102, 143, 54, 65, 25, 63, 161, 1, 216, 80, 73, 209, 76, 132, 187, 208, 89, 18, 169, 200, 196, 135, 130, 116, 188, 159, 86, 164, 100, 109, 198, 173, 186, 3, 64, 52, 217, 226, 250, 124, 123, 5, 202, 38, 147, 118, 126, 255, 82, 85, 212, 207, 206, 59, 227, 47, 16, 58, 17, 182, 189, 28, 42, 223, 183, 170, 213, 119, 248, 152, 2, 44, 154, 163, 70, 221, 153, 101, 155, 167, 43, 172, 9, 129, 22, 39, 253, 19, 98, 108, 110, 79, 113, 224, 232, 178, 185, 112, 104, 218, 246, 97, 228, 251, 34, 242, 193, 238, 210, 144, 12, 191, 179, 162, 241, 81, 51, 145, 235, 249, 14, 239, 107, 49, 192, 214, 31, 181, 199, 106, 157, 184, 84, 204, 176, 115, 121, 50, 45, 127, 4, 150, 254, 138, 236, 205, 93, 222, 114, 67, 29, 24, 72, 243, 141, 128, 195, 78, 66, 215, 61, 156, 180];
+
+  i = 0;
+
+  while (i < 256) {
+    p[256 + i] = p[i];
+    i++;
+  }
+
+  ImprovedNoise.prototype.noise = function(x, y, z) {
+    var A, AA, AB, B, BA, BB, X, Y, Z, floorX, floorY, floorZ, u, v, w, xMinus1, yMinus1, zMinus1;
+    floorX = ~~x;
+    floorY = ~~y;
+    floorZ = ~~z;
+    X = floorX & 255;
+    Y = floorY & 255;
+    Z = floorZ & 255;
+    x -= floorX;
+    y -= floorY;
+    z -= floorZ;
+    xMinus1 = x - 1;
+    yMinus1 = y - 1;
+    zMinus1 = z - 1;
+    u = fade(x);
+    v = fade(y);
+    w = fade(z);
+    A = p[X] + Y;
+    AA = p[A] + Z;
+    AB = p[A + 1] + Z;
+    B = p[X + 1] + Y;
+    BA = p[B] + Z;
+    BB = p[B + 1] + Z;
+    return lerp(w, lerp(v, lerp(u, grad(p[AA], x, y, z), grad(p[BA], xMinus1, y, z)), lerp(u, grad(p[AB], x, yMinus1, z), grad(p[BB], xMinus1, yMinus1, z))), lerp(v, lerp(u, grad(p[AA + 1], x, y, zMinus1), grad(p[BA + 1], xMinus1, y, z - 1)), lerp(u, grad(p[AB + 1], x, yMinus1, zMinus1), grad(p[BB + 1], xMinus1, yMinus1, zMinus1))));
+  };
+
+  return ImprovedNoise;
+
+})();
+
+improvedNoise = new util.ImprovedNoise();
+
+/*
+
 	BaseScene: Base class that is extended by SvgScene and PaperScene
 */
 
@@ -135,6 +205,13 @@ BaseScene = (function() {
     this.addLock = __bind(this.addLock, this);
 
     this.update = __bind(this.update, this);
+
+    this.play = __bind(this.play, this);
+
+    this.unload = __bind(this.unload, this);
+
+    this.pause = __bind(this.pause, this);
+    BaseScene.currentTimeStep = 0.0;
     this.options.container = "#container";
     this.options.verticalAlign = "center";
     this.options.horizontalAlign = "center";
@@ -149,8 +226,8 @@ BaseScene = (function() {
     this.updates = [];
     this.plugins = [];
     this.quadTree = new util.QuadTree();
-    this.lastFrameTime = new Date().getTime();
     this.isPlaying = true;
+    return this;
   }
 
   BaseScene.prototype.pause = function() {
@@ -158,19 +235,35 @@ BaseScene = (function() {
   };
 
   BaseScene.prototype.unload = function() {
-    var p, _i, _len, _ref, _results;
+    var p, _i, _len, _ref;
     this.isPlaying = false;
     _ref = this.plugins;
-    _results = [];
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       p = _ref[_i];
-      _results.push(p.unload());
+      p.unload();
     }
-    return _results;
+    this.points = [];
+    this.sticks = [];
+    this.stickLinks = [];
+    this.elementPoints = [];
+    this.statics = [];
+    this.updates = [];
+    this.plugins = [];
   };
 
   BaseScene.prototype.play = function() {
+    var p, _i, _len, _ref;
+    if (this.isPlaying) {
+      return;
+    }
     this.isPlaying = true;
+    this.lastFrameTime = new Date().getTime();
+    _ref = this.points;
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+      p = _ref[_i];
+      p.forceX = 0;
+      p.forceY = 0;
+    }
     if (this.isLoaded) {
       return this.update();
     }
@@ -182,13 +275,14 @@ BaseScene = (function() {
 
   BaseScene.prototype.onInit = function() {
     var e, _i, _len, _ref;
+    this.lastFrameTime = new Date().getTime();
     _ref = this.plugins;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       e = _ref[_i];
       e.init(this);
     }
     this.quadTree.clear();
-    return this.update();
+    this.update();
   };
 
   BaseScene.prototype.update = function() {
@@ -222,11 +316,11 @@ BaseScene = (function() {
       s.update();
     }
     if (this.isPlaying) {
-      return window.requestAnimFrame(this.update, null);
+      window.requestAnimFrame(this.update, null);
     }
   };
 
-  BaseScene.prototype.tick = 0;
+  BaseScene.tick = 0;
 
   BaseScene.prototype.addPoint = function(x, y, kind) {
     var foundPoints, p, search;
@@ -360,12 +454,14 @@ svg.Scene = (function(_super) {
   }
 
   Scene.prototype.onLoaded = function() {
-    var _;
     Scene.__super__.onLoaded.call(this);
     this.dom = this.svg = this.container.find("svg")[0];
+    this.dom.dispatchEvent(new Event("OnSceneFileLoaded", {
+      bubbles: true,
+      cancelable: true
+    }));
     $(this.dom).hide();
     $(this.dom).fadeIn();
-    _ = this;
     this.parseByGroups();
     this.verticalAlign(this.options.verticalAlign);
     this.horizontalAlign(this.options.horizontalAlign);
@@ -1238,14 +1334,7 @@ paperjs.StickLink = (function(_super) {
 
 plugins.BasePlugin = (function() {
 
-  function BasePlugin() {
-    this.unload = __bind(this.unload, this);
-
-    this.update = __bind(this.update, this);
-
-    this.init = __bind(this.init, this);
-
-  }
+  function BasePlugin() {}
 
   BasePlugin.prototype.init = function(scene) {
     this.scene = scene;
@@ -1279,6 +1368,8 @@ plugins.Gravity = (function(_super) {
 
   Gravity.prototype.useMobileTilt = true;
 
+  Gravity.prototype.mobileAmplitude = 0.1;
+
   function Gravity(y, x, useMobileTilt) {
     this.useMobileTilt = useMobileTilt != null ? useMobileTilt : true;
     this.update = __bind(this.update, this);
@@ -1294,7 +1385,7 @@ plugins.Gravity = (function(_super) {
   }
 
   Gravity.prototype.init = function(scene) {
-    var p, _i, _len, _ref,
+    var mobileX, mobileY, p, _i, _len, _ref,
       _this = this;
     this.scene = scene;
     this.points = [];
@@ -1306,9 +1397,15 @@ plugins.Gravity = (function(_super) {
       }
     }
     if (this.useMobileTilt && this.scene.isMobile()) {
+      mobileY = -this.mobileAmplitude * this.y;
+      if (this.x === 0) {
+        mobileX = -mobileY;
+      } else {
+        mobileX = this.mobileAmplitude * this.x;
+      }
       return window.ondevicemotion = function(e) {
-        _this.x = parseFloat(e.accelerationIncludingGravity.x) * .03;
-        return _this.y = parseFloat(e.accelerationIncludingGravity.y) * -.03;
+        _this.x = parseFloat(e.accelerationIncludingGravity.x) * mobileX;
+        return _this.y = parseFloat(e.accelerationIncludingGravity.y) * mobileY;
       };
     }
   };
@@ -1337,6 +1434,8 @@ plugins.Gravity = (function(_super) {
 */
 
 
+lastUpdate = 0.0;
+
 plugins.MousePull = (function(_super) {
 
   __extends(MousePull, _super);
@@ -1347,7 +1446,7 @@ plugins.MousePull = (function(_super) {
     down: 0
   };
 
-  MousePull.prototype.strength = 0.001;
+  MousePull.prototype.strength = 0.004;
 
   MousePull.prototype.downStrength = 0.01;
 
@@ -1368,13 +1467,21 @@ plugins.MousePull = (function(_super) {
 
     this.onMouseMove = __bind(this.onMouseMove, this);
 
+    this.onMouseUp = __bind(this.onMouseUp, this);
+
+    this.onMouseDown = __bind(this.onMouseDown, this);
+
+    this.initDesktop = __bind(this.initDesktop, this);
+
+    this.onTouchMove = __bind(this.onTouchMove, this);
+
+    this.onTouchStart = __bind(this.onTouchStart, this);
+
     this.initMobile = __bind(this.initMobile, this);
 
     this.onResize = __bind(this.onResize, this);
 
     this.unload = __bind(this.unload, this);
-
-    this.init = __bind(this.init, this);
     if (strength != null) {
       this.strength = strength;
     }
@@ -1387,6 +1494,7 @@ plugins.MousePull = (function(_super) {
     var p, _i, _len, _ref;
     this.scene = scene;
     this.dom = this.scene.dom;
+    this.mouse.down = 0;
     this.points = [];
     _ref = this.scene.points;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -1401,27 +1509,19 @@ plugins.MousePull = (function(_super) {
       this.initDesktop();
     }
     $(window).resize(this.onResize);
-    this.scene.dom.addEventListener("onSceneLoaded", this.onResize, false);
+    this.scene.dom.addEventListener("onSceneLoaded", this.onResize);
     return this.onResize();
   };
 
   MousePull.prototype.unload = function() {
-    var _this = this;
     $(window).unbind("resize", this.onResize);
     this.scene.dom.removeEventListener("onSceneLoaded", this.onResize);
-    if (this.scene.isMobile()) {
-      document.removeEventListener("touchmove");
-      document.removeEventListener("touchend");
-      return document.removeEventListener("touchstart");
-    } else {
-      document.removeEventListener("mousemove", this.onMouseMove);
-      document.removeEventListener("mousedown", function() {
-        return _this.mouse.down = 2;
-      });
-      return document.removeEventListener("mouseup", function() {
-        return _this.mouse.down = 1;
-      });
-    }
+    document.removeEventListener("touchmove", this.onTouchMove);
+    document.removeEventListener("touchend", this.onTouchEnd);
+    document.removeEventListener("touchstart", this.onTouchStart);
+    document.removeEventListener("mousemove", this.onMouseMove);
+    document.removeEventListener("mousedown", this.onMouseDown);
+    return document.removeEventListener("mouseup", this.onMouseUp);
   };
 
   MousePull.prototype.onResize = function() {
@@ -1433,30 +1533,34 @@ plugins.MousePull = (function(_super) {
   };
 
   MousePull.prototype.initMobile = function() {
-    var _this = this;
-    this.strength = .1;
-    this.downStrength = 1;
     document.addEventListener("touchmove", this.onTouchMove);
-    document.addEventListener("touchend", function(e) {
-      _this.mouse.down = 0;
-      _this.mouse.x = -9999;
-      return _this.mouse.y = -9999;
-    });
-    return document.addEventListener("touchstart", function(e) {
-      return _this.mouse.down = 1;
-    });
+    document.addEventListener("touchend", this.onTouchEnd);
+    return document.addEventListener("touchstart", this.onTouchStart);
+  };
+
+  MousePull.prototype.onTouchStart = function() {
+    return this.mouse.down = 1;
+  };
+
+  MousePull.prototype.onTouchMove = function() {
+    this.mouse.down = 0;
+    this.mouse.x = -9999;
+    return this.mouse.y = -9999;
   };
 
   MousePull.prototype.initDesktop = function() {
-    var _this = this;
     this.mouse.down = 1;
     document.addEventListener("mousemove", this.onMouseMove);
-    document.addEventListener("mousedown", function() {
-      return _this.mouse.down = 2;
-    });
-    return document.addEventListener("mouseup", function() {
-      return _this.mouse.down = 1;
-    });
+    document.addEventListener("mousedown", this.onMouseDown);
+    return document.addEventListener("mouseup", this.onMouseUp);
+  };
+
+  MousePull.prototype.onMouseDown = function() {
+    return this.mouse.down = 2;
+  };
+
+  MousePull.prototype.onMouseUp = function() {
+    return this.mouse.down = 1;
   };
 
   MousePull.prototype.onMouseMove = function(e) {
@@ -1467,6 +1571,8 @@ plugins.MousePull = (function(_super) {
   };
 
   MousePull.prototype.onTouchMove = function(e) {
+    this.offsetX = $(this.dom).offset().left;
+    this.offsetY = $(this.dom).offset().top;
     this.mouse.x = e.touches[0].pageX - this.offsetX;
     this.mouse.y = e.touches[0].pageY - this.offsetY;
     e.preventDefault();
@@ -1511,8 +1617,6 @@ plugins.NoiseWarp = (function(_super) {
 
   __extends(NoiseWarp, _super);
 
-  NoiseWarp.prototype.noise = null;
-
   NoiseWarp.prototype.speed = 0.01;
 
   NoiseWarp.prototype.zoom = 0.002;
@@ -1527,9 +1631,7 @@ plugins.NoiseWarp = (function(_super) {
 
   NoiseWarp.prototype.skip = 0;
 
-  function NoiseWarp() {
-    this.noise = new util.ImprovedNoise();
-  }
+  function NoiseWarp() {}
 
   NoiseWarp.prototype.init = function(scene) {
     var p, _, _i, _len, _ref;
@@ -1538,16 +1640,16 @@ plugins.NoiseWarp = (function(_super) {
     _ref = this.scene.points;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       p = _ref[_i];
-      p.warpDampen = Math.max(this.noise.noise(p.x * 0.1, p.y * 0.1, 1.0) * 0.2 + 0.1, 0.01);
+      p.warpDampen = Math.max(improvedNoise.noise(p.x * 0.1, p.y * 0.1, 1.0) * 0.2 + 0.1, 0.01);
     }
     return this.update = function() {
       var currentStrength, _j, _k, _len1, _len2, _ref1, _ref2, _results;
-      currentStrength = BaseScene.currentTimeStep * this.strength;
+      currentStrength = this.strength;
       _ref1 = this.scene.points;
       for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
         p = _ref1[_j];
-        p.x += ((p.originalX + this.noise.noise(p.x * this.zoom + this.offsetX, p.y * this.zoom + this.offsetY, this.offsetZ) * currentStrength) - p.x) * p.warpDampen;
-        p.y += ((p.originalY + this.noise.noise(p.x * this.zoom + 1.0 + this.offsetX, p.y * this.zoom + this.offsetY, this.offsetZ) * currentStrength) - p.y) * p.warpDampen;
+        p.x += ((p.originalX + improvedNoise.noise(p.x * this.zoom + this.offsetX, p.y * this.zoom + this.offsetY, this.offsetZ) * currentStrength) - p.x) * p.warpDampen;
+        p.y += ((p.originalY + improvedNoise.noise(p.x * this.zoom + 1.0 + this.offsetX, p.y * this.zoom + this.offsetY, this.offsetZ) * currentStrength) - p.y) * p.warpDampen;
       }
       this.offsetZ += this.speed;
       _ref2 = this.scene.elementPoints;
@@ -1605,8 +1707,6 @@ plugins.Wind = (function(_super) {
 
   __extends(Wind, _super);
 
-  Wind.prototype.noise = null;
-
   Wind.prototype.speed = 0.01;
 
   Wind.prototype.zoom = 0.002;
@@ -1625,19 +1725,20 @@ plugins.Wind = (function(_super) {
 
   function Wind(useSvgPoints) {
     this.useSvgPoints = useSvgPoints != null ? useSvgPoints : false;
-    this.update = __bind(this.update, this);
-
-    this.offsetZ = 1.0;
-    this.noise = new util.ImprovedNoise();
+    this.id = "instance" + Math.floor(Math.random() * 10000);
+    this.strength = 0.1;
+    this.zoom = 0.002;
+    this.speed = 0.01;
+    this.offsetZ = Math.random() * 100.0;
   }
 
   Wind.prototype.init = function(scene) {
-    var p, _, _i, _len, _ref, _results;
+    var p, _, _i, _len, _ref;
     this.scene = scene;
     _ = this;
     this.windPoints = [];
     if (this.useSvgPoints) {
-      return $(this.scene.dom).find('[id^="Wind"]').find("circle,ellipse").each(function() {
+      $(this.scene.dom).find('[id^="Wind"]').find("circle,ellipse").each(function() {
         var c, p, x, y;
         c = $(this);
         x = c.attr('cx');
@@ -1648,28 +1749,28 @@ plugins.Wind = (function(_super) {
       });
     } else {
       _ref = this.scene.points;
-      _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         p = _ref[_i];
         if (!p.locked) {
-          _results.push(this.windPoints.push(p));
-        } else {
-          _results.push(void 0);
+          this.windPoints.push(p);
         }
       }
-      return _results;
     }
   };
 
   Wind.prototype.update = function() {
-    var currentStrength, p, _i, _len, _ref;
+    var currentStrength, maxNoise, p, ynoise, _i, _len, _ref;
     currentStrength = BaseScene.currentTimeStep * this.strength;
     _ref = this.windPoints;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       p = _ref[_i];
-      p.force(this.noise.noise(p.x * this.zoom + this.offsetX, p.y * this.zoom + this.offsetY, this.offsetZ) * currentStrength, this.noise.noise(p.x * this.zoom + 1.0 + this.offsetX, p.y * this.zoom + this.offsetY, this.offsetZ) * currentStrength);
+      ynoise = improvedNoise.noise(p.x * this.zoom + 1.0 + this.offsetX, p.y * this.zoom + this.offsetY, this.offsetZ) * currentStrength;
+      if (ynoise > maxNoise) {
+        maxNoise = ynoise;
+      }
+      p.force(improvedNoise.noise(p.x * this.zoom + this.offsetX, p.y * this.zoom + this.offsetY, this.offsetZ) * currentStrength, ynoise);
     }
-    return this.offsetZ += this.speed;
+    this.offsetZ += this.speed;
   };
 
   return Wind;
@@ -2035,74 +2136,6 @@ util.General = (function() {
 RAD_2_DEG = 180 / Math.PI;
 
 /*
-
-	Improved Noise: fast noise filter
-
-	Source: http://mrl.nyu.edu/~perlin/noise/
-*/
-
-
-util.ImprovedNoise = (function() {
-  var fade, grad, i, lerp, p;
-
-  function ImprovedNoise() {}
-
-  fade = function(t) {
-    return t * t * t * (t * (t * 6 - 15) + 10);
-  };
-
-  lerp = function(t, a, b) {
-    return a + t * (b - a);
-  };
-
-  grad = function(hash, x, y, z) {
-    var h, u, v;
-    h = hash & 15;
-    u = (h < 8 ? x : y);
-    v = (h < 4 ? y : (h === 12 || h === 14 ? x : z));
-    return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
-  };
-
-  p = [151, 160, 137, 91, 90, 15, 131, 13, 201, 95, 96, 53, 194, 233, 7, 225, 140, 36, 103, 30, 69, 142, 8, 99, 37, 240, 21, 10, 23, 190, 6, 148, 247, 120, 234, 75, 0, 26, 197, 62, 94, 252, 219, 203, 117, 35, 11, 32, 57, 177, 33, 88, 237, 149, 56, 87, 174, 20, 125, 136, 171, 168, 68, 175, 74, 165, 71, 134, 139, 48, 27, 166, 77, 146, 158, 231, 83, 111, 229, 122, 60, 211, 133, 230, 220, 105, 92, 41, 55, 46, 245, 40, 244, 102, 143, 54, 65, 25, 63, 161, 1, 216, 80, 73, 209, 76, 132, 187, 208, 89, 18, 169, 200, 196, 135, 130, 116, 188, 159, 86, 164, 100, 109, 198, 173, 186, 3, 64, 52, 217, 226, 250, 124, 123, 5, 202, 38, 147, 118, 126, 255, 82, 85, 212, 207, 206, 59, 227, 47, 16, 58, 17, 182, 189, 28, 42, 223, 183, 170, 213, 119, 248, 152, 2, 44, 154, 163, 70, 221, 153, 101, 155, 167, 43, 172, 9, 129, 22, 39, 253, 19, 98, 108, 110, 79, 113, 224, 232, 178, 185, 112, 104, 218, 246, 97, 228, 251, 34, 242, 193, 238, 210, 144, 12, 191, 179, 162, 241, 81, 51, 145, 235, 249, 14, 239, 107, 49, 192, 214, 31, 181, 199, 106, 157, 184, 84, 204, 176, 115, 121, 50, 45, 127, 4, 150, 254, 138, 236, 205, 93, 222, 114, 67, 29, 24, 72, 243, 141, 128, 195, 78, 66, 215, 61, 156, 180];
-
-  i = 0;
-
-  while (i < 256) {
-    p[256 + i] = p[i];
-    i++;
-  }
-
-  ImprovedNoise.prototype.noise = function(x, y, z) {
-    var A, AA, AB, B, BA, BB, X, Y, Z, floorX, floorY, floorZ, u, v, w, xMinus1, yMinus1, zMinus1;
-    floorX = ~~x;
-    floorY = ~~y;
-    floorZ = ~~z;
-    X = floorX & 255;
-    Y = floorY & 255;
-    Z = floorZ & 255;
-    x -= floorX;
-    y -= floorY;
-    z -= floorZ;
-    xMinus1 = x - 1;
-    yMinus1 = y - 1;
-    zMinus1 = z - 1;
-    u = fade(x);
-    v = fade(y);
-    w = fade(z);
-    A = p[X] + Y;
-    AA = p[A] + Z;
-    AB = p[A + 1] + Z;
-    B = p[X + 1] + Y;
-    BA = p[B] + Z;
-    BB = p[B + 1] + Z;
-    return lerp(w, lerp(v, lerp(u, grad(p[AA], x, y, z), grad(p[BA], xMinus1, y, z)), lerp(u, grad(p[AB], x, yMinus1, z), grad(p[BB], xMinus1, yMinus1, z))), lerp(v, lerp(u, grad(p[AA + 1], x, y, zMinus1), grad(p[BA + 1], xMinus1, y, z - 1)), lerp(u, grad(p[AB + 1], x, yMinus1, zMinus1), grad(p[BB + 1], xMinus1, yMinus1, zMinus1))));
-  };
-
-  return ImprovedNoise;
-
-})();
-
-/*
 	
 	Quadtree: For quickly determining if points overlap. 
 	Used to create the verlet stick connections
@@ -2363,9 +2396,9 @@ verlet.RubberPoint = (function(_super) {
 
   RubberPoint.prototype.rubberForceY = 0;
 
-  RubberPoint.maxAmp = 0.2;
+  RubberPoint.maxAmp = 0.02;
 
-  RubberPoint.minAmp = 0.05;
+  RubberPoint.minAmp = 0.005;
 
   function RubberPoint(x, y, locked) {
     this.x = x;
@@ -2375,20 +2408,20 @@ verlet.RubberPoint = (function(_super) {
     this.rubberAmplitude = util.General.randomFromRange(verlet.RubberPoint.minAmp, verlet.RubberPoint.maxAmp);
   }
 
-  RubberPoint.prototype.force = function(x, y) {
-    this.forceX += x;
-    return this.forceY += y;
-  };
-
   RubberPoint.prototype.update = function() {
     if (this.dead || this.down || this.locked) {
       return null;
     }
-    this.rubberForceX = (this.originalX - this.x) * this.rubberAmplitude * (BaseScene.currentTimeStep * 0.1);
-    this.rubberForceY = (this.originalY - this.y) * this.rubberAmplitude * (BaseScene.currentTimeStep * 0.1);
-    this.x += ((this.x + this.rubberForceX) - this.x) * 0.99;
-    this.y += ((this.y + this.rubberForceY) - this.y) * 0.99;
+    this.rubberForceX = (this.originalX - this.x) * this.rubberAmplitude * BaseScene.currentTimeStep;
+    this.rubberForceY = (this.originalY - this.y) * this.rubberAmplitude * BaseScene.currentTimeStep;
+    this.x += this.rubberForceX;
+    this.y += this.rubberForceY;
     return RubberPoint.__super__.update.call(this);
+  };
+
+  RubberPoint.resetDefaults = function() {
+    verlet.RubberPoint.minAmp = 0.02;
+    return verlet.RubberPoint.maxAmp = 0.005;
   };
 
   return RubberPoint;

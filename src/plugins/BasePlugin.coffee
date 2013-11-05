@@ -9,11 +9,11 @@ class plugins.BasePlugin
 	constructor: ->
 		# called when the object is instantiated
 
-	init: (@scene) =>
+	init: (@scene) ->
 		# called when the scene is loaded
 
-	update: =>
+	update: ->
 		# updated every frame
 
-	unload: =>
+	unload: ->
 		# called if the scene is unloaded

@@ -1,4 +1,5 @@
 #<< plugins/BasePlugin
+#<< util/ImprovedNoise
 
 ### 
 
@@ -8,7 +9,6 @@
 
 
 class plugins.Wind extends plugins.BasePlugin
-	noise: null
 	speed: 0.01
 	zoom: 0.002
 	strength: 0.1
@@ -20,8 +20,11 @@ class plugins.Wind extends plugins.BasePlugin
 	skip: 0
 
 	constructor: ( @useSvgPoints = false ) ->
-		@offsetZ = 1.0
-		@noise = new util.ImprovedNoise()
+		@id = "instance" + Math.floor(Math.random() * 10000)
+		@strength = 0.1
+		@zoom = 0.002
+		@speed = 0.01
+		@offsetZ = Math.random() * 100.0
 
 	init: (@scene) ->
 		_ = @
@@ -40,13 +43,18 @@ class plugins.Wind extends plugins.BasePlugin
 		else
 			for p in @scene.points
 				@windPoints.push(p) unless p.locked
+		return
 
-	update: =>
+	update: ->
 		currentStrength = BaseScene.currentTimeStep * @strength
+		# console.log currentStrength, @strength, BaseScene.currentTimeStep
 
 		for p in @windPoints
+			ynoise = improvedNoise.noise(p.x * @zoom + 1.0 + @offsetX , p.y * @zoom + @offsetY , @offsetZ) * currentStrength
+			maxNoise = ynoise if ynoise > maxNoise
 			p.force(
-				@noise.noise(p.x * @zoom + @offsetX , p.y * @zoom + @offsetY , @offsetZ) * currentStrength, 
-				@noise.noise(p.x * @zoom + 1.0 + @offsetX , p.y * @zoom + @offsetY , @offsetZ) * currentStrength
+				improvedNoise.noise(p.x * @zoom + @offsetX , p.y * @zoom + @offsetY , @offsetZ) * currentStrength, 
+				ynoise
 			)
 		@offsetZ += @speed
+		return

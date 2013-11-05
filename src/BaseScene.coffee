@@ -30,6 +30,8 @@ class BaseScene
 	@currentTimeStep: 0.0
 
 	constructor: (options) ->
+		BaseScene.currentTimeStep = 0.0
+
 		@options.container = "#container"
 		@options.verticalAlign = "center"
 		@options.horizontalAlign = "center"
@@ -45,33 +47,71 @@ class BaseScene
 		@updates = []
 		@plugins = []
 
+		# $(window).keyup (e) =>
+		# 	console.log "key", e.which
+		# 	switch e.which
+		# 		when 32
+		# 			if @isPlaying
+		# 				@pause() 
+		# 			else 
+		# 				@play()
+		# 	return
+
 		@quadTree = new util.QuadTree()
-		@lastFrameTime = new Date().getTime()
 		@isPlaying = true
+		return @
 
-	pause: ->
+	pause: =>
 		@isPlaying = false
 
-	unload: ->
+	unload: =>
 		@isPlaying = false
-		p.unload() for p in @plugins
 
-	play: ->
+		for p in @plugins
+			p.unload()
+		
+		# $(window).unbind("keyup")
+
+		@points = []
+		@sticks = []
+		@stickLinks = []
+		@elementPoints = []
+		@statics = []
+		@updates = []
+		@plugins = []
+		return
+
+
+	play: =>
+		return if @isPlaying
+		# console.log "play"
 		@isPlaying = true
+		@lastFrameTime = (new Date().getTime())
+
+		# forces may have built up, clear them
+		for p in @points
+			p.forceX = 0
+			p.forceY = 0
+
 		@update() if @isLoaded
+
+
+
 
 	onLoaded: ->
 		@isLoaded = true
 
 	onInit: ->
+		@lastFrameTime = new Date().getTime()
 		for e in @plugins
 			e.init(@)
 		@quadTree.clear()
 		@update()
+		return
 
 	update: =>
 		currentTime = (new Date().getTime())
-		BaseScene.currentTimeStep = Math.min(currentTime - @lastFrameTime,20)
+		BaseScene.currentTimeStep = Math.min(currentTime - @lastFrameTime,20) # 15
 		@lastFrameTime = currentTime
 
 		e.update() for e in @plugins
@@ -79,11 +119,10 @@ class BaseScene
 		s.contract() for s in @sticks
 		p.update() for p in @elementPoints
 		s.update() for s in @stickLinks
-		# if @tick < 10
 		window.requestAnimFrame(@update,null) if @isPlaying
-		# @tick++	
+		return
 
-	tick: 0
+	@tick: 0
 	
 
 

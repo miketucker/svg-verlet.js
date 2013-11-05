@@ -6,6 +6,8 @@
 
 ###
 
+lastUpdate = 0.0
+
 
 class plugins.MousePull extends plugins.BasePlugin
 	mouse:
@@ -13,7 +15,7 @@ class plugins.MousePull extends plugins.BasePlugin
 		y: -9999
 		down: 0
 
-	strength: 0.001
+	strength: 0.004
 	downStrength: 0.01
 
 	svg: null
@@ -27,8 +29,9 @@ class plugins.MousePull extends plugins.BasePlugin
 		@strength = strength if strength?
 		@downStrength = mouseDownStrength if mouseDownStrength?
 
-	init: (@scene) =>
+	init: (@scene) ->
 		@dom = @scene.dom
+		@mouse.down = 0
 
 		@points = []
 		for p in @scene.points
@@ -40,7 +43,7 @@ class plugins.MousePull extends plugins.BasePlugin
 			@initDesktop()
 
 		$(window).resize @onResize
-		@scene.dom.addEventListener "onSceneLoaded", @onResize, false
+		@scene.dom.addEventListener "onSceneLoaded", @onResize
 		@onResize()
 
 	unload: =>
@@ -48,15 +51,13 @@ class plugins.MousePull extends plugins.BasePlugin
 		$(window).unbind( "resize", @onResize )
 		@scene.dom.removeEventListener "onSceneLoaded", @onResize
 
-		if @scene.isMobile()
-			document.removeEventListener "touchmove"
-			document.removeEventListener "touchend"
-			document.removeEventListener "touchstart"	
-		else
-			document.removeEventListener "mousemove", @onMouseMove
-			document.removeEventListener "mousedown", () => @mouse.down = 2
-			document.removeEventListener "mouseup", () => @mouse.down = 1
-
+		document.removeEventListener "touchmove", @onTouchMove
+		document.removeEventListener "touchend", @onTouchEnd
+		document.removeEventListener "touchstart", @onTouchStart
+		document.removeEventListener "mousemove", @onMouseMove
+		document.removeEventListener "mousedown", @onMouseDown
+		document.removeEventListener "mouseup", @onMouseUp
+		# console.log("unload")
 
 	onResize: =>
 		ww = $(window).width()
@@ -67,24 +68,32 @@ class plugins.MousePull extends plugins.BasePlugin
 
 	initMobile: =>
 
-		@strength = .1
-		@downStrength = 1
+		# @strength *= 2.0
+		# @downStrength *= 0.1
 
 		document.addEventListener "touchmove", @onTouchMove
-		document.addEventListener "touchend", (e) => 
-			@mouse.down = 0
-			@mouse.x = -9999
-			@mouse.y = -9999
+		document.addEventListener "touchend", @onTouchEnd
+		document.addEventListener "touchstart", @onTouchStart
 
-		document.addEventListener "touchstart", (e) => 
-			@mouse.down = 1
+	onTouchStart: =>
+		@mouse.down = 1
 
-	initDesktop: ->
+	onTouchMove: =>
+		@mouse.down = 0
+		@mouse.x = -9999
+		@mouse.y = -9999
+
+	initDesktop: =>
 		@mouse.down = 1
 		document.addEventListener "mousemove", @onMouseMove
-		document.addEventListener "mousedown", () => @mouse.down = 2
-		document.addEventListener "mouseup", () => @mouse.down = 1
+		document.addEventListener "mousedown", @onMouseDown
+		document.addEventListener "mouseup", @onMouseUp
 
+	onMouseDown: =>
+		@mouse.down = 2
+
+	onMouseUp: =>
+		@mouse.down = 1
 
 	onMouseMove: (e) =>
 		@offsetX = $(@dom).offset().left 
@@ -94,15 +103,24 @@ class plugins.MousePull extends plugins.BasePlugin
 		@mouse.y = e.pageY - @offsetY
 
 	onTouchMove: (e) =>
+		@offsetX = $(@dom).offset().left 
+		@offsetY = $(@dom).offset().top 
+			
+
 		@mouse.x = e.touches[0].pageX - @offsetX
 		@mouse.y = e.touches[0].pageY - @offsetY
+
+
 		e.preventDefault()
 		return null
 
 	update: () =>
 		return if @mouse.down < 1
+
 		amt = (if (@mouse.down > 1) then @downStrength else @strength)
 		amt *= (BaseScene.currentTimeStep * 0.1)
+		# console.log("mouse",amt)
+		
 		mx = @mouse.x
 		my = @mouse.y
 		for p in @points

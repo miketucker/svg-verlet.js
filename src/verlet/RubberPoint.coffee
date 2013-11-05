@@ -16,24 +16,24 @@ class verlet.RubberPoint extends verlet.Point
 	rubberForceX: 0
 	rubberForceY: 0
 
-	@maxAmp: 0.2
-	@minAmp: 0.05
+	@maxAmp: 0.02
+	@minAmp: 0.005
 
 	constructor: (@x, @y, @locked = false) ->
 		super(@x,@y,@locked)
 		@rubberAmplitude = util.General.randomFromRange(verlet.RubberPoint.minAmp,verlet.RubberPoint.maxAmp)
 		
-	force: (x, y) ->
-		@forceX += x
-		@forceY += y
-
 	update: ->
 		return null if @dead || @down || @locked
 
-		@rubberForceX = ( @originalX - @x ) * @rubberAmplitude * (BaseScene.currentTimeStep * 0.1)
-		@rubberForceY = ( @originalY - @y ) * @rubberAmplitude * (BaseScene.currentTimeStep * 0.1)
+		@rubberForceX = ( @originalX - @x ) * @rubberAmplitude * BaseScene.currentTimeStep
+		@rubberForceY = ( @originalY - @y ) * @rubberAmplitude * BaseScene.currentTimeStep
 
-		@x += ((@x + @rubberForceX) - @x) * 0.99
-		@y += ((@y + @rubberForceY) - @y) * 0.99
+		@x += @rubberForceX
+		@y += @rubberForceY
 
 		super()
+
+	@resetDefaults: ->
+		verlet.RubberPoint.minAmp = 0.02
+		verlet.RubberPoint.maxAmp = 0.005

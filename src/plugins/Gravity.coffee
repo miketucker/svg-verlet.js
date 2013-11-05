@@ -14,6 +14,7 @@ class plugins.Gravity extends plugins.BasePlugin
 	y: 0.02
 	points: null
 	useMobileTilt: true
+	mobileAmplitude: 0.1
 
 	constructor: (y,x,@useMobileTilt = true) ->
 		@y = y if y?
@@ -27,9 +28,15 @@ class plugins.Gravity extends plugins.BasePlugin
 			@points.push(p) unless p.locked
 
 		if @useMobileTilt && @scene.isMobile()
+			mobileY = -@mobileAmplitude * @y
+			if @x == 0
+				mobileX = -mobileY
+			else 
+				mobileX = @mobileAmplitude * @x
+
 			window.ondevicemotion = (e) =>
-				@x = parseFloat(e.accelerationIncludingGravity.x) * .03
-				@y = parseFloat(e.accelerationIncludingGravity.y) * -.03
+				@x = parseFloat(e.accelerationIncludingGravity.x) * mobileX
+				@y = parseFloat(e.accelerationIncludingGravity.y) * mobileY
 
 	update: =>
 		timeStep = BaseScene.currentTimeStep

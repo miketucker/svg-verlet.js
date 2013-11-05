@@ -21,8 +21,6 @@ class svg.Scene extends BaseScene
 	offsetX: 0
 	offsetY: 0
 
-	
-
 	onLoadCallback: null
 
 	constructor: (options) ->
@@ -44,14 +42,11 @@ class svg.Scene extends BaseScene
 	onLoaded: =>
 		super()
 		@dom = @svg = @container.find("svg")[0]
+		@dom.dispatchEvent(new Event("OnSceneFileLoaded",{bubbles:true,cancelable:true}))
 		$(@dom).hide()
 		$(@dom).fadeIn()
-		_ = @
-
 		@parseByGroups()
 		
-
-
 		@verticalAlign(@options.verticalAlign)
 		@horizontalAlign(@options.horizontalAlign)
 
